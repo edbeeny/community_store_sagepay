@@ -1,7 +1,7 @@
-# community_store_sagepay
+# hw_community_store_sagepay
 Sage Pay (Form) payment add-on for Community Store for concrete5
 
-https://sagepay.com
+https://sagepay.co.uk
 
 ## Setup
 Install Community Store First.
