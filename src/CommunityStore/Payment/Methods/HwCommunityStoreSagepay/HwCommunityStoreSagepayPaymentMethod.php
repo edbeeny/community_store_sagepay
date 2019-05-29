@@ -2,6 +2,7 @@
 
 namespace Concrete\Package\HwCommunityStoreSagepay\Src\CommunityStore\Payment\Methods\HwCommunityStoreSagepay;
 
+use Concrete\Core\Routing\Redirect;
 use Core;
 use URL;
 use Config;
@@ -10,7 +11,9 @@ use Log;
 use FileList;
 use File;
 
-
+use \Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayForm;
+use \Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayServer;
+use \Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePay;
 use \Concrete\Package\CommunityStore\Src\CommunityStore\Payment\Method as StorePaymentMethod;
 use \Concrete\Package\CommunityStore\Src\CommunityStore\Cart\Cart as StoreCart;
 use \Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order as StoreOrder;
@@ -29,13 +32,22 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
         $this->set('sagepayEncryptionPassword', Config::get('hw_community_store_sagepay.EncryptionPassword'));
         $this->set('sagepayVendorEmail', Config::get('hw_community_store_sagepay.VendorEmail'));
         $this->set('sagepayType', Config::get('hw_community_store_sagepay.Type'));
+        $this->set('sagepayMode', Config::get('hw_community_store_sagepay.Mode'));
 
         $txtype = array(
             'PAYMENT' => "PAYMENT",
-            'DEFERRED' => "DEFERRED",
-            'AUTHENTICATE' => "AUTHENTICATE"
+
+           /**TODO It should work but test is not setup for these types of transactions
+            * * 'DEFERRED' => "DEFERRED", **
+            * * 'AUTHENTICATE' => "AUTHENTICATE" * */
         );
         $this->set('txtype', $txtype);
+
+        $txtmode = array(
+            'SERVER' => "SERVER",
+            'FORM' => "FORM"
+        );
+        $this->set('txtmode', $txtmode);
 
         $currencies = array(
 
@@ -55,6 +67,7 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
         Config::save('hw_community_store_sagepay.EncryptionPassword', $data['sagepayEncryptionPassword']);
         Config::save('hw_community_store_sagepay.VendorEmail', $data['sagepayVendorEmail']);
         Config::save('hw_community_store_sagepay.Type', $data['sagepayType']);
+        Config::save('hw_community_store_sagepay.Mode', $data['sagepayMode']);
 
     }
 
@@ -63,116 +76,58 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
         return $e;
     }
 
+
     public function redirectForm()
     {
-        $customer = new StoreCustomer();
-        $sagepayTestMode = Config::get('hw_community_store_sagepay.TestMode');
-        $order = StoreOrder::getByID(Session::get('orderID'));
+
         $this->set('TxType', Config::get('hw_community_store_sagepay.Type'));
         $this->set('Vendor', Config::get('hw_community_store_sagepay.VendorName'));
 
-        $transactionId = $order->getOrderID() . 'C' . 'S' . strftime("%Y%m%d%H%M%S") . mt_rand(1, 999);
+        If (Config::get('hw_community_store_sagepay.Mode') == 'SERVER') {
 
-        $this->set('Crypt', $this->getCrypt($transactionId));
+            if (Config::get('hw_community_store_sagepay.TestMode') == true) {
+                $sagepayurl = "https://test.sagepay.com/gateway/service/vspserver-register.vsp";
+            } else {
+                $sagepayurl = "https://live.sagepay.com/gateway/service/vspserver-register.vsp";
+            }
+            $querys = SagePay::generateQuery();
+            SagePayServer::processPayment($sagepayurl, $querys);
 
-        // get unique transaction-ID useful for check payment status
+        } else {
 
-        $order->saveTransactionReference($transactionId);
-    }
+            $querys = SagePay::generateQuery();
+            $this->set('Crypt', SagePayForm::getCrypt($querys));
 
-    public function getCrypt($transactionId)
-    {
-        $order = StoreOrder::getByID(Session::get('orderID'));
-        $customer = new StoreCustomer();
-
-        $cryptString = 'VendorTxCode=' . $transactionId;
-        //$cryptString.= '&ReferrerID='.$this->getReferrerID()
-        $cryptString .= '&Amount=' . $order->getTotal();
-        $cryptString .= '&Currency=' . Config::get('hw_community_store_sagepay.currency');
-        $cryptString .= '&Description=' . Config::get('concrete.site');
-        $cryptString .= '&SuccessURL=' . URL::to('/checkout/sagepay_success');
-        $cryptString .= '&FailureURL=' . URL::to('/checkout/sagepay_failure');
-        $cryptString .= '&CustomerName=' . $customer->getValue('billing_first_name');
-        $cryptString .= '&CustomerEMail=' . $customer->getEmail();
-        $cryptString .= '&VendorEMail=' . Config::get('hw_community_store_sagepay.VendorEmail');
-
-        //$cryptString.= '&SendEMail='.$this->getSendEMail();
-        // $cryptString.= '&eMailMessage='.$this->getEMailMessage();
-
-        $cryptString .= '&BillingSurname=' . $customer->getValue('billing_last_name');
-        $cryptString .= '&BillingFirstnames=' . $customer->getValue('billing_first_name');
-        $cryptString .= '&BillingAddress1=' . $customer->getAddressValue('billing_address', 'address1');
-        $cryptString .= '&BillingAddress2=' . $customer->getAddressValue('billing_address', 'address2');
-        $cryptString .= '&BillingCity=' . $customer->getAddressValue('billing_address', 'city');
-        $cryptString .= '&BillingPostCode=' . $customer->getAddressValue('billing_address', 'postal_code');
-        $cryptString .= '&BillingCountry=' . $customer->getAddressValue('billing_address', 'country');
-        $cryptString .= '&BillingState=' . $customer->getAddressValue('billing_address', 'state_province');
-        $cryptString .= '&BillingPhone=' . $customer->getValue("billing_phone");
-        $cryptString .= '&DeliverySurname=' . $customer->getValue('shipping_last_name');
-        $cryptString .= '&DeliveryFirstnames=' . $customer->getValue('shipping_first_name');
-        $cryptString .= '&DeliveryAddress1=' . $customer->getAddressValue('shipping_address', 'address1');
-        $cryptString .= '&DeliveryAddress2=' . $customer->getAddressValue('billing_address', 'address2');
-        $cryptString .= '&DeliveryCity=' . $customer->getAddressValue('shipping_address', 'city');
-        $cryptString .= '&DeliveryPostCode=' . $customer->getAddressValue('shipping_address', 'postal_code');
-        $cryptString .= '&DeliveryCountry=' . $customer->getAddressValue('shipping_address', 'country');
-        $cryptString .= '&DeliveryState=' . $customer->getAddressValue('shipping_address', 'state_province');
-        $cryptString .= '&DeliveryPhone=' . $customer->getValue("shipping_phone");
-        //$cryptString.= '&Basket='.$this->getBasket();
-
-       // $cryptString .= '&BasketXML=' . $this->basketXML(); ** TO DO **
-        //$cryptString.= '&AllowGiftAid='.$this->getAllowGiftAid();
-        //$cryptString.= '&ApplyAVSCV2='.$this->getApplyAVSCV2();
-        //$cryptString.= '&Apply3DSecure='.$this->getApply3DSecure();
-        //$cryptString.= '&BillingAgreement='.$this->getBillingAgreement();
-        //$cryptString.= '&BasketXML='.$this->getBasketXML();
-        //$cryptString.= '&CustomerXML='.$this->getCustomerXML();
-        //$cryptString.= '&SurchargeXML='.$this->getSurchargeXML();
-        //$cryptString.= '&VendorData='.$this->getVendorData();
-        //$cryptString.= '&ReferrerID='.$this->getReferrerID();
-        //$cryptString.= '&Language='.$this->getLanguage();
-        $cryptString .= '&Website=' . Config::get('concrete.site');
-
-        $datapadded = $this->addPKCS5Padding($cryptString, 16);
-        $cryptpadded = "@" . $this->encryptFieldData($datapadded);
-
-        return $cryptpadded;
+        }
 
 
-    }
-
-
-    public function addPKCS5Padding($text, $blocksize)
-    {
-        $pad = $blocksize - (strlen($text) % $blocksize);
-        return $text . str_repeat(chr($pad), $pad);
-    }
-
-    public function encryptFieldData($input)
-    {
-        $key = Config::get('hw_community_store_sagepay.EncryptionPassword');;
-
-        $enc2 = openssl_encrypt($input, 'aes-128-cbc', $key, OPENSSL_RAW_DATA, $key);
-        $enc3 = bin2hex($enc2);
-
-        return $enc3;
     }
 
 
     public function getAction()
     {
-        if (Config::get('hw_community_store_sagepay.TestMode') == true) {
-            return "https://test.sagepay.com/gateway/service/vspform-register.vsp";
+        If (Config::get('hw_community_store_sagepay.Mode') == 'SERVER') {
+            //returns nothing as we get the url when it redirects the form.
+            return "#";
         } else {
-            return "https://live.sagepay.com/gateway/service/vspform-register.vsp";
+            if (Config::get('hw_community_store_sagepay.TestMode') == true) {
+                return "https://test.sagepay.com/gateway/service/vspform-register.vsp";
+            } else {
+                return "https://live.sagepay.com/gateway/service/vspform-register.vsp";
+            }
         }
     }
 
 
     public function submitPayment()
     {
+        If (Config::get('hw_community_store_sagepay.Mode') == 'SERVER') {
+            return array('error' => 0, 'transactionReference' => '');
+        } else {
+            //nothing to do except return true
+            return array('error' => 0, 'transactionReference' => '');
+        }
 
-        //nothing to do except return true
-        return array('error' => 0, 'transactionReference' => '');
 
     }
 
@@ -181,62 +136,105 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
         //Redirects to the checkout form
         $response = \Redirect::to('/checkout');
         $response->send();
-        die;
-
     }
 
     public function validateCompletion()
     {
 
-        $crypt = $_GET['crypt'];
-        $responseArray = $this->decode($crypt);
-
-        if ($responseArray["Status"] === "OK") {
-            //Payment Successful! Update the Store
-            $transReference = $responseArray["VendorTxCode"];
-            $em = \ORM::entityManager();
-            $order = $em->getRepository('Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order')->findOneBy(array('transactionReference' => $transReference));
-            if ($order) {
-                $order->completeOrder();
-                $response = \Redirect::to('/checkout/complete');
-                $response->send();
-                die;
-            }
-
-        } elseif ($responseArray["Status"] === "ABORT") {
-            return ['error' => 1, 'errorMessage' => t('Transaction Aborted.')];
+        If (Config::get('hw_community_store_sagepay.Mode') == 'SERVER') {
+            //Do nothing
         } else {
-            return ['error' => 1, 'errorMessage' => t('Something went wrong with this transaction.')];
+            $crypt = $_GET['crypt'];
+            $responseArray = SagePayForm::decode($crypt);
+
+            if ($responseArray["Status"] === "OK") {
+                //Payment Successful! Update the Store
+                $transReference = $responseArray["VendorTxCode"];
+                $em = \ORM::entityManager();
+                $order = $em->getRepository('Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order')->findOneBy(array('transactionReference' => $transReference));
+                if ($order) {
+                    $order->completeOrder();
+                    $response = \Redirect::to('/checkout/complete');
+                    $response->send();
+                }
+            } elseif ($responseArray["Status"] === "ABORT") {
+                return ['error' => 1, 'errorMessage' => t('Transaction Aborted.')];
+            } else {
+                return ['error' => 1, 'errorMessage' => t('Something went wrong with this transaction.')];
+            }
         }
     }
 
-
-    public function decode($strIn)
+    public function serverNotification()
     {
-        $decodedString = $this->decodeAndDecrypt($strIn);
-        parse_str($decodedString, $sagePayResponse);
-        return $sagePayResponse;
-    }
 
-    public function decodeAndDecrypt($strIn)
-    {
-        $key = Config::get('hw_community_store_sagepay.EncryptionPassword');
+        //Get the response from SagePay
+        $vtxData = filter_input_array(INPUT_POST);
 
-        // Remove the first char which is @ to flag this is AES encrypted and HEX decoding.
-        $hexString = substr($strIn, 1);
+        $transReference = $vtxData['VendorTxCode'];
+        $status = $vtxData['Status'];
 
-        // Last minute check to make sure we have data that looks sensible.
+        //Add checks to make sure payment hasn't been changed. We could add more in the future.
+        //Check the order exists from the VendorTxCode returned by SagePay, if it doesn't respond with error
 
-        if (!preg_match('/^[0-9a-f]+$/i', $hexString)) {
-            throw new \Exception('Invalid "crypt" parameter; not hexadecimal');
+        $em = \ORM::entityManager();
+        $order = $em->getRepository('Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order')->findOneBy(array('transactionReference' => $transReference));
+
+        if (!$order) {
+
+            $r = URL::to('checkout/sagepayserver_failure');
+            $end_ln = chr(13) . chr(10);
+            echo "Status=INVALID" . $end_ln;
+            echo "StatusDetail= VendorTxCode not be matched. Order might have been tampered with." . $end_ln;
+            echo "RedirectURL=" . $r . $end_ln;
+
+            //Stop and return to payment page with error
+            exit;
         }
 
-        $strIn2 = pack('H*', $hexString);
-        $des = openssl_decrypt($strIn2, 'aes-128-cbc', $key, OPENSSL_RAW_DATA, $key);
+        //ToDO detect any possible tampering with messages using VPSSignature
+        
+        //Check the status if not ok return to Payment Page and notify SagePay of failure
+        if ($status != "OK" && $status != "REGISTERED" && $status != "AUTHENTICATED") {
+            $r = URL::to('checkout/sagepayserver_failure');
+            $end_ln = chr(13) . chr(10);
+            echo "Status=INVALID" . $end_ln;
+            echo "StatusDetail= status invalid" . $end_ln;
+            echo "RedirectURL=" . $r . $end_ln;
 
-        return $des;
+            //Stop and return to payment page with error
+            exit;
+
+        }
+
+        //Update Sagepay table with results
+        SagePayServer::updateOrderDetails($order->getOrderID(), $vtxData, $order->getTotal());
+
+        //Completes the Order
+        $order->completeOrder();
+
+        $end_ln = chr(13) . chr(10);
+        $r = URL::to('checkout/complete');
+
+        echo "Status=OK" . $end_ln;
+        echo "RedirectURL=" . $r . $end_ln;
+
 
     }
+
+    public function serverSuccess()
+    {
+        //Do nothing
+
+    }
+
+    public function serverfailure()
+    {
+        Session::set('paymentErrors', 'Something went wrong with the payment, please try again.');
+        $response = \Redirect::to('/checkout/failed#payment');
+        $response->send();
+    }
+
 
     public function getPaymentMinimum()
     {

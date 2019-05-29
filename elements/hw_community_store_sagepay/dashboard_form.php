@@ -25,7 +25,12 @@ extract($vars);
 
 <div class="form-group">
     <?= $form->label('sagepayType',t("Type")); ?>
-    <?= $form->select('sagepayType', $txtype, $sagepayTypey?$sagepayType:'PAYMENT');?>
+    <?= $form->select('sagepayType', $txtype, $sagepayType?$sagepayType:'PAYMENT');?>
+</div>
+
+<div class="form-group">
+    <?= $form->label('sagepayMode',t("Type")); ?>
+    <?= $form->select('sagepayMode', $txtmode, $sagepayMode?$sagepayMode:'FORM');?>
 </div>
 
 <div class="form-group">
