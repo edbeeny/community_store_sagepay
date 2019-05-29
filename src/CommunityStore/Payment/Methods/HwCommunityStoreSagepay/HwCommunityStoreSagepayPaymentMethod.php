@@ -3,11 +3,11 @@
 namespace Concrete\Package\HwCommunityStoreSagepay\Src\CommunityStore\Payment\Methods\HwCommunityStoreSagepay;
 
 use Concrete\Core\Routing\Redirect;
+use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayOrder;
 use Core;
 use URL;
 use Config;
 use Session;
-use Log;
 use FileList;
 use File;
 
@@ -20,6 +20,7 @@ use \Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order as StoreOrde
 use \Concrete\Package\CommunityStore\Src\CommunityStore\Customer\Customer as StoreCustomer;
 use \Concrete\Package\CommunityStore\Src\CommunityStore\Order\OrderStatus\OrderStatus as StoreOrderStatus;
 use \Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Calculator as StoreCalculator;
+
 
 class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
 {
@@ -94,15 +95,10 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
             SagePayServer::processPayment($sagepayurl, $querys);
 
         } else {
-
             $querys = SagePay::generateQuery();
             $this->set('Crypt', SagePayForm::getCrypt($querys));
-
         }
-
-
     }
-
 
     public function getAction()
     {
@@ -173,6 +169,7 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
 
         $transReference = $vtxData['VendorTxCode'];
         $status = $vtxData['Status'];
+        $VPSSignature = $vtxData['VPSSignature'];
 
         //Add checks to make sure payment hasn't been changed. We could add more in the future.
         //Check the order exists from the VendorTxCode returned by SagePay, if it doesn't respond with error
@@ -192,8 +189,38 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
             exit;
         }
 
-        //ToDO detect any possible tampering with messages using VPSSignature
-        
+        $sagepayOrder = SagePayOrder::getByOrderNo($order);
+        $securitykey = $sagepayOrder->getsecuritykey();
+
+
+        //Construct a concatenated POST string hash.
+        //Check out signature and compare it against the contents of the VPSSignature field in the POST.
+        $strMessage =
+            $vtxData['VPSTxId'] . $vtxData['VendorTxCode'] . $vtxData['Status']
+            . $vtxData['TxAuthNo'] . Config::get('hw_community_store_sagepay.VendorName')
+            . $vtxData['AVSCV2'] . $securitykey
+            . $vtxData['AddressResult'] . $vtxData['PostCodeResult'] . $vtxData['CV2Result']
+            . $vtxData['GiftAid'] . $vtxData['3DSecureStatus']
+            . $vtxData['CAVV'] . $vtxData['AddressStatus'] . $vtxData['PayerStatus']
+            . $vtxData['CardType'] . $vtxData['Last4Digits']
+            . $vtxData['DeclineCode'] . $vtxData['ExpiryDate']
+            . $vtxData['FraudResponse'] . $vtxData['BankAuthCode'];
+
+        $MySignature = strtoupper(md5($strMessage));
+
+        if ($MySignature !== $VPSSignature) {
+            // Message that record has been tampered with.
+            $r = URL::to('checkout/sagepayserver_failure');
+            $end_ln = chr(13) . chr(10);
+            echo "Status=INVALID" . $end_ln;
+            echo "StatusDetail= Notification has been tampered with" . $end_ln;
+            echo "RedirectURL=" . $r . $end_ln;
+
+            //Stop and return to payment page with error
+            exit;
+
+        }
+
         //Check the status if not ok return to Payment Page and notify SagePay of failure
         if ($status != "OK" && $status != "REGISTERED" && $status != "AUTHENTICATED") {
             $r = URL::to('checkout/sagepayserver_failure');
@@ -219,13 +246,11 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
         echo "Status=OK" . $end_ln;
         echo "RedirectURL=" . $r . $end_ln;
 
-
     }
 
     public function serverSuccess()
     {
         //Do nothing
-
     }
 
     public function serverfailure()
@@ -234,7 +259,6 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
         $response = \Redirect::to('/checkout/failed#payment');
         $response->send();
     }
-
 
     public function getPaymentMinimum()
     {
