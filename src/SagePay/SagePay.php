@@ -43,7 +43,9 @@ class SagePay
         $query .= '&BillingCity=' . $customer->getAddressValue('billing_address', 'city');
         $query .= '&BillingPostCode=' . $customer->getAddressValue('billing_address', 'postal_code');
         $query .= '&BillingCountry=' . $customer->getAddressValue('billing_address', 'country');
-        $query .= '&BillingState=' . $customer->getAddressValue('billing_address', 'state_province');
+        if ($customer->getAddressValue('billing_address', 'country') == 'US') {
+            $query .= '&BillingState=' . $customer->getAddressValue('billing_address', 'state_province');
+        }
         $query .= '&BillingPhone=' . $customer->getValue("billing_phone");
         $query .= '&DeliverySurname=' . $customer->getValue('shipping_last_name');
         $query .= '&DeliveryFirstnames=' . $customer->getValue('shipping_first_name');
@@ -52,7 +54,9 @@ class SagePay
         $query .= '&DeliveryCity=' . $customer->getAddressValue('shipping_address', 'city');
         $query .= '&DeliveryPostCode=' . $customer->getAddressValue('shipping_address', 'postal_code');
         $query .= '&DeliveryCountry=' . $customer->getAddressValue('shipping_address', 'country');
-        $query .= '&DeliveryState=' . $customer->getAddressValue('shipping_address', 'state_province');
+        if ($customer->getAddressValue('shipping_address', 'country') == 'US') {
+            $query .= '&DeliveryState=' . $customer->getAddressValue('shipping_address', 'state_province');
+        }
         $query .= '&DeliveryPhone=' . $customer->getValue("shipping_phone");
         //$query.= '&Basket='.$this->getBasket();
 
