@@ -14,7 +14,7 @@ class Controller extends Package
 {
     protected $pkgHandle = 'hw_community_store_sagepay';
     protected $appVersionRequired = '8';
-    protected $pkgVersion = '0.9.1';
+    protected $pkgVersion = '0.9.2';
 
 
     protected $pkgAutoloaderRegistries = array(
