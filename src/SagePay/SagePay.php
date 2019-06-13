@@ -26,11 +26,11 @@ class SagePay
         $sagepayTestMode = Config::get('hw_community_store_sagepay.TestMode');
         $order = StoreOrder::getByID(Session::get('orderID'));
         $transactionId = $order->getOrderID() . 'C' . 'S' . strftime("%Y%m%d%H%M%S") . mt_rand(1, 999);
-        //$transactionId = '1';
+
         $query = '&VPSProtocol=3.00';
         $query .= '&Vendor=' . Config::get('hw_community_store_sagepay.VendorName');
         $query .= '&VendorTxCode=' . $transactionId;
-        //$query.= '&ReferrerID='.$this->getReferrerID()
+        //$query .= '&ReferrerID=';
         $query .= '&Amount=' . number_format(StoreCalculator::getGrandTotal(), 2, '.', '');
         $query .= '&Currency=' . Config::get('hw_community_store_sagepay.currency');
         $query .= '&Description=' . Config::get('concrete.site');
@@ -44,7 +44,11 @@ class SagePay
         $query .= '&BillingSurname=' . $customer->getValue('billing_last_name');
         $query .= '&BillingFirstnames=' . $customer->getValue('billing_first_name');
         $query .= '&BillingAddress1=' . $customer->getAddressValue('billing_address', 'address1');
-        $query .= '&BillingAddress2=' . $customer->getAddressValue('billing_address', 'address2');
+
+        if ($customer->getAddressValue('billing_address', 'address2')) {
+            $query .= '&BillingAddress2=' . $customer->getAddressValue('billing_address', 'address2');
+        }
+
         $query .= '&BillingCity=' . $customer->getAddressValue('billing_address', 'city');
         $query .= '&BillingPostCode=' . $customer->getAddressValue('billing_address', 'postal_code');
         $query .= '&BillingCountry=' . $customer->getAddressValue('billing_address', 'country');
@@ -52,32 +56,59 @@ class SagePay
         if ($customer->getAddressValue('billing_address', 'country') == 'US') {
             $query .= '&BillingState=' . $customer->getAddressValue('billing_address', 'state_province');
         }
+
         $query .= '&BillingPhone=' . $customer->getValue("billing_phone");
-        $query .= '&DeliverySurname=' . $customer->getValue('shipping_last_name');
-        $query .= '&DeliveryFirstnames=' . $customer->getValue('shipping_first_name');
-        $query .= '&DeliveryAddress1=' . $customer->getAddressValue('shipping_address', 'address1');
-        $query .= '&DeliveryAddress2=' . $customer->getAddressValue('billing_address', 'address2');
-        $query .= '&DeliveryCity=' . $customer->getAddressValue('shipping_address', 'city');
-        $query .= '&DeliveryPostCode=' . $customer->getAddressValue('shipping_address', 'postal_code');
-        $query .= '&DeliveryCountry=' . $customer->getAddressValue('shipping_address', 'country');
+
+        if ($order->isShippable())
+        {
+            $query .= '&DeliverySurname=' . $customer->getValue('shipping_last_name');
+            $query .= '&DeliveryFirstnames=' . $customer->getValue('shipping_first_name');
+            $query .= '&DeliveryAddress1=' . $customer->getAddressValue('shipping_address', 'address1');
+
+            if ($customer->getAddressValue('shipping_address', 'address2')) {
+                $query .= '&DeliveryAddress2=' . $customer->getAddressValue('shipping_address', 'address2');
+            }
+
+            $query .= '&DeliveryCity=' . $customer->getAddressValue('shipping_address', 'city');
+            $query .= '&DeliveryPostCode=' . $customer->getAddressValue('shipping_address', 'postal_code');
+            $query .= '&DeliveryCountry=' . $customer->getAddressValue('shipping_address', 'country');
 
 
-        if ($customer->getAddressValue('shipping_address', 'country') == 'US') {
-            $query .= '&DeliveryState=' . $customer->getAddressValue('shipping_address', 'state_province');
+            if ($customer->getAddressValue('shipping_address', 'country') == 'US') {
+                $query .= '&DeliveryState=' . $customer->getAddressValue('shipping_address', 'state_province');
+            }
+            $query .= '&DeliveryPhone=' . $customer->getValue("shipping_phone");
+
+        } else {
+        $query .= '&DeliverySurname=' . $customer->getValue('billing_last_name');
+        $query .= '&DeliveryFirstnames=' . $customer->getValue('billing_first_name');
+        $query .= '&DeliveryAddress1=' . $customer->getAddressValue('billing_address', 'address1');
+
+        if ($customer->getAddressValue('billing_address', 'address2')) {
+            $query .= '&DeliveryAddress2=' . $customer->getAddressValue('billing_address', 'address2');
         }
-        $query .= '&DeliveryPhone=' . $customer->getValue("shipping_phone");
+
+        $query .= '&DeliveryCity=' . $customer->getAddressValue('billing_address', 'city');
+        $query .= '&DeliveryPostCode=' . $customer->getAddressValue('billing_address', 'postal_code');
+        $query .= '&DeliveryCountry=' . $customer->getAddressValue('billing_address', 'country');
+
+
+        if ($customer->getAddressValue('billing_address', 'country') == 'US') {
+            $query .= '&DeliveryState=' . $customer->getAddressValue('billing_address', 'state_province');
+        }
+        $query .= '&DeliveryPhone=' . $customer->getValue("billing_phone");
+    }
         //$query .= '&Basket=' . SagePay::getBasket();
 
         $query .= '&BasketXML=' . SagePay::getBasketXml();
 
         //$query.= '&AllowGiftAid='.$this->getAllowGiftAid();
         //$query.= '&ApplyAVSCV2='.$this->getApplyAVSCV2();
-        //$query.= '&Apply3DSecure='.$this->getApply3DSecure();
+        $query .= '&Apply3DSecure=0';
         //$query.= '&BillingAgreement='.$this->getBillingAgreement();
         //$query.= '&CustomerXML='.$this->getCustomerXML();
         //$query.= '&SurchargeXML='.$this->getSurchargeXML();
         //$query.= '&VendorData='.$this->getVendorData();
-        //$query.= '&ReferrerID='.$this->getReferrerID();
         //$query.= '&Language='.$this->getLanguage();
 
         $query .= '&Website=' . Config::get('concrete.site');
@@ -85,6 +116,7 @@ class SagePay
 
         $order->saveTransactionReference($transactionId);
         return $query;
+
     }
 
 
@@ -129,9 +161,27 @@ class SagePay
 
         }
 
+        $taxCalc = \Concrete\Core\Support\Facade\Config::get('community_store.calculation');
         $totals = StoreCalculator::getTotals();
+        $taxtotal = StoreCalculator::getTaxTotals();
         $shippingTotal = number_format($totals['shippingTotal'], 2, '.', '');
-        $basket->appendChild($dom->createElement('deliveryGrossAmount', $shippingTotal));
+
+        foreach ($taxtotal as $taxtotals) {
+            $shippingTaxTotal = number_format($taxtotals['shippingtaxamount'], 2, '.', '');
+        }
+
+        if ('extract' != $taxCalc) {
+            $shippingNetAmount = number_format($shippingTotal, 2, '.', '');
+            $shippingGrossTotal = number_format($shippingTotal + $shippingTaxTotal, 2, '.', '');
+        } else {
+            $shippingNetAmount = number_format($shippingTotal - $shippingTaxTotal, 2, '.', '');
+            $shippingGrossTotal = number_format($shippingTotal, 2, '.', '');
+        }
+
+        $basket->appendChild($dom->createElement('deliveryNetAmount', $shippingNetAmount));
+        $basket->appendChild($dom->createElement('deliveryTaxAmount', $shippingTaxTotal));
+        $basket->appendChild($dom->createElement('deliveryGrossAmount', $shippingGrossTotal));
+
 
         return $dom->saveXML($dom->documentElement);
 
