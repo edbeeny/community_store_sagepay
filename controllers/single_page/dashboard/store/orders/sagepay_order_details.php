@@ -8,8 +8,8 @@ use Concrete\Package\CommunityStore\Src\CommunityStore\Order\OrderStatus\OrderSt
 use Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order as StoreOrder;
 use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayOrder;
 use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayServer;
-use Config;
-use Log;
+use Concrete\Core\Support\Facade\Config;
+
 
 class SagepayOrderDetails extends DashboardPageController
 {
