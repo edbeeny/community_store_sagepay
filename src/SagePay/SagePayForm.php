@@ -1,10 +1,9 @@
 <?php
 namespace Concrete\Package\HwCommunityStoreSagepay\Src\SagePay;
 
-use Core;
-use URL;
-use Session;
-use Config;
+use Concrete\Core\Support\Facade\Url;
+use Concrete\Core\Support\Facade\Session;
+use Concrete\Core\Support\Facade\Config;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Customer\Customer as StoreCustomer;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order as StoreOrder;
 
@@ -38,7 +37,7 @@ class SagePayForm
 
     public function encryptFieldData($input)
     {
-        $key = Config::get('hw_community_store_sagepay.EncryptionPassword');;
+        $key = Config::get('hw_community_store_sagepay.EncryptionPassword');
 
         $enc2 = openssl_encrypt($input, 'aes-128-cbc', $key, OPENSSL_RAW_DATA, $key);
         $enc3 = bin2hex($enc2);
