@@ -8,11 +8,10 @@ use Concrete\Package\CommunityStore\Src\CommunityStore\Order\OrderList as StoreO
 use Concrete\Package\CommunityStore\Src\CommunityStore\Order\OrderStatus\OrderStatusHistory as StoreOrderStatusHistory;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Calculator as StoreCalculator;
 use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayOrder;
-use Core;
-use URL;
-use Session;
-use Config;
-use User;
+use Concrete\Core\Support\Facade\Url;
+use Concrete\Core\Support\Facade\Session;
+use Concrete\Core\Support\Facade\Config;
+use Concrete\Core\User\User;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Customer\Customer as StoreCustomer;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Order\Order as StoreOrder;
 
