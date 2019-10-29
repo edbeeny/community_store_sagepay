@@ -24,6 +24,8 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
 
     public function dashboardForm()
     {
+        $app = Application::getFacadeApplication();
+        
         $this->set('sagepayTestMode', Config::get('hw_community_store_sagepay.TestMode'));
         $this->set('sagepayCurrency', Config::get('hw_community_store_sagepay.currency'));
         $this->set('sagepayVendorName', Config::get('hw_community_store_sagepay.VendorName'));
@@ -54,7 +56,7 @@ class HwCommunityStoreSagepayPaymentMethod extends StorePaymentMethod
 
         );
         $this->set('currencies', $currencies);
-        $this->set('form', Core::make("helper/form"));
+        $this->set('form', $app->make("helper/form"));
     }
 
     public function save(array $data = array())
