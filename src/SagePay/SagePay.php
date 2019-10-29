@@ -4,10 +4,9 @@ namespace Concrete\Package\HwCommunityStoreSagepay\Src\SagePay;
 
 use Concrete\Package\CommunityStore\Src\CommunityStore\Tax\Tax as StoreTax;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Price as StorePrice;
-use Core;
-use URL;
-use Session;
-use Config;
+use Concrete\Core\Support\Facade\Url;
+use Concrete\Core\Support\Facade\Session;
+use Concrete\Core\Support\Facade\Config;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Calculator as StoreCalculator;
 use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayForm;
 use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayServer;
