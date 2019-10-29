@@ -3,14 +3,11 @@
 namespace Concrete\Package\HwCommunityStoreSagepay\Src\CommunityStore\Payment\Methods\HwCommunityStoreSagepay;
 
 use Concrete\Core\Routing\Redirect;
+use Concrete\Core\Support\Facade\Application;
 use Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayOrder;
-use Core;
-use URL;
-use Config;
-use Session;
-use FileList;
-use File;
-
+use Concrete\Core\Support\Facade\Url;
+use Concrete\Core\Support\Facade\Config;
+use Concrete\Core\Support\Facade\Session;
 use \Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayForm;
 use \Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePayServer;
 use \Concrete\Package\HwCommunityStoreSagepay\Src\SagePay\SagePay;
