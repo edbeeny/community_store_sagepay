@@ -30,7 +30,7 @@ class SagePay
         $query .= '&Vendor=' . Config::get('hw_community_store_sagepay.VendorName');
         $query .= '&VendorTxCode=' . $transactionId;
         //$query .= '&ReferrerID=';
-        $query .= '&Amount=' . number_format(StoreCalculator::getGrandTotal(), 2, '.', '');
+        $query .= '&Amount=' . number_format($order->getTotal(), 2, '.', '');
         $query .= '&Currency=' . Config::get('hw_community_store_sagepay.currency');
         $query .= '&Description=' . Config::get('concrete.site');
         $query .= '&CustomerName=' . $customer->getValue('billing_first_name');
